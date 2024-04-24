@@ -73,4 +73,8 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
       - uses: ./.github/actions/revert-merge
