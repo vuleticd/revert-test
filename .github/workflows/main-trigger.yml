@@ -1,0 +1,76 @@
+name: onboard-freewheel
+
+on:
+  # Run on push to main branch
+  push:
+    branches:
+      - main
+  # Run on pull request
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # Run on manual trigger
+  workflow_dispatch:
+    inputs:
+      manual_run_environment:
+         type: environment
+         description: Select the environment
+
+concurrency:
+  # Make sure every job on main has unique group id (run_id), so cancel-in-progress only affects PR's
+  # https://stackoverflow.com/questions/74117321/if-condition-in-concurrency-in-gha
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  development:
+    # Only run on pull request, or the workflow was triggered manually
+    if: github.event_name == 'pull_request' || inputs.manual_run_environment == 'development'
+    runs-on: ubuntu-latest
+    steps:
+        - name: Development workflow
+          run: |
+            echo "Development"
+
+
+  staging:
+    # Only run on push to main branch, or the workflow was triggered manually
+    if: (github.event_name == 'push' && github.ref_name == 'main') || inputs.manual_run_environment == 'staging'
+    runs-on: ubuntu-latest
+    steps:
+        - name: Staging workflow
+          run: |
+            echo "Staging"
+
+        - name: Mock failure
+          if: ${{ contains(github.event.head_commit.message, 'stag_fail_test') }}
+          run: exit 1
+
+  production:
+    # Only run on push to main branch, or the workflow was triggered manually
+    if: (github.event_name == 'push' && github.ref_name == 'main') || inputs.manual_run_environment == 'production'
+    needs: [staging]
+    runs-on: ubuntu-latest
+    steps:
+        - name: Production workflow
+          run: |
+            echo "Production"
+
+        - name: Mock failure
+          if: ${{ contains(github.event.head_commit.message, 'prod_fail_test') }}
+          run: exit 1
+
+  revert:
+    # Only run if any of needed jobs failed on main branch, except if the workflow was triggered manually
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref_name == 'main' && inputs.manual_run_environment == '' }}
+    needs: [staging, production]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: ./.github/actions/revert-merge
