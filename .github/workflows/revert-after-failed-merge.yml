@@ -1,0 +1,64 @@
+# A common workflow to revert the failed PR merge. It will create new PR with Reverted changes and auto merge it 
+name: revert-after-failed-merge
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Deployment environment, eg. dev'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+            
+      - name: Configure Git
+        shell: bash
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Branch out
+        shell: bash
+        run: |
+          git checkout -b revert-${{ github.sha }} main
+
+      - name: Revert last commit
+        env:
+          LAST_COMMIT: "${{ github.sha }}"
+        shell: bash
+        run: |
+          last_merge_commit=$(git rev-list --merges --max-count=1 HEAD)
+          if [[ "${LAST_COMMIT}" == "${last_merge_commit}" ]]
+          then
+            git revert -m 1 HEAD --no-edit
+            echo "WAS MERGE"
+            echo $last_merge_commit
+          else
+            git revert HEAD --no-edit
+            echo "WAS NOT MERGE"
+          fi
+
+      - name: Push revert commit to feature branch
+        shell: bash
+        run: |
+          git push origin revert-${{ github.sha }}
+
+      - name: Create PR
+        env: 
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh pr create -f
+          gh pr merge --auto -s
