@@ -68,5 +68,8 @@ jobs:
     # Only run if any of needed jobs failed on main branch, except if the workflow was triggered manually
     if: ${{ always() && contains(needs.*.result, 'failure') && github.ref_name == 'main' && inputs.manual_run_environment == '' }}
     needs: [staging, production]
+    permissions:
+      pull-requests: write
+      contents: write
     uses: ./.github/workflows/revert-after-failed-merge.yml
     
