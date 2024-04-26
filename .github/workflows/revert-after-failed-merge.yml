@@ -13,11 +13,6 @@ on:
         required: false
         default: false
         type: boolean
-      auto_approve:
-        description: 'Auto approve revert PR'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -71,14 +66,6 @@ jobs:
         shell: bash
         run: |
           gh pr create -f
-          
-      - name: Auto approve PR
-        if: ${{ inputs.auto_approve }}
-        env: 
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          gh pr review --approve
 
       - name: Auto Merge PR
         if: ${{ inputs.auto_merge }}
