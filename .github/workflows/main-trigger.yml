@@ -36,10 +36,6 @@ jobs:
           run: |
             echo "Development"
 
-        - name: Mock failure
-          if: ${{ contains(github.event.head_commit.message, 'dev_fail_test') }}
-          run: exit 1
-
 
   staging:
     # Only run on push to main branch, or the workflow was triggered manually
