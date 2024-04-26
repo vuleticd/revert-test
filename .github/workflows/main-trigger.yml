@@ -72,4 +72,7 @@ jobs:
       pull-requests: write
       contents: write
     uses: ./.github/workflows/revert-after-failed-merge.yml
+      with:
+        auto_merge: true
+        auto_approve: true
     
